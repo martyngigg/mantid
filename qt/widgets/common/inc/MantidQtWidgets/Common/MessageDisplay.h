@@ -13,7 +13,8 @@
 #include "DllOption.h"
 #include "MantidQtWidgets/Common/Configurable.h"
 #include "MantidQtWidgets/Common/Message.h"
-#include "MantidQtWidgets/Common/QtSignalChannel.h"
+
+#include <Poco/Channel.h>
 
 #include <QHash>
 #include <QTextCharFormat>
@@ -40,10 +41,24 @@ namespace MantidWidgets {
  * a message is a framework Poco message or a simple string.
  * It can connect to the Mantid logging framework if required
  */
-class EXPORT_OPT_MANTIDQT_COMMON MessageDisplay : public QWidget,
-                                                  public Configurable {
+class EXPORT_OPT_MANTIDQT_COMMON MessageDisplay
+    : public QWidget,
+      public MantidWidgets::Configurable {
   Q_OBJECT
   Q_PROPERTY(QString source READ source WRITE setSource)
+
+private:
+  class LogChannelImpl : public Poco::Channel {
+  public:
+    LogChannelImpl(MessageDisplay *owner);
+
+  protected:
+    /// Recieve a log message from the Poco log channel
+    void log(const Poco::Message &msg) override;
+
+  private:
+    MessageDisplay *m_display;
+  };
 
 public:
   // Configurable interface
@@ -63,7 +78,7 @@ public:
   /// If set, only Mantid log messages from this source are emitted
   void setSource(const QString &source);
   /// Get the current source are emitted
-  inline const QString &source() const { return m_logChannel->source(); }
+  inline const QString &source() const { return m_source; }
 
 signals:
   /// Indicate that a message of error or higher has been received.
@@ -121,8 +136,7 @@ private:
   /// Return format for given log level
   QTextCharFormat format(const Message::Priority priority) const;
 
-  /// A reference to the log channel
-  QtSignalChannel *m_logChannel;
+  LogChannelImpl *m_channel;
   /// The actual widget holding the text
   QPlainTextEdit *m_textDisplay;
   /// Map priority to text formatting
@@ -133,6 +147,8 @@ private:
   QSignalMapper *m_logLevelMapping;
   /// Log level actions
   QAction *m_error, *m_warning, *m_notice, *m_information, *m_debug;
+  /// Source id for display
+  QString m_source;
 };
 } // namespace MantidWidgets
 } // namespace MantidQt

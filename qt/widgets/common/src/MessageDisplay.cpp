@@ -43,7 +43,30 @@ namespace MantidQt {
 namespace MantidWidgets {
 
 //-------------------------------------------
-// Public member functions
+// MessageDisplay::LogChannelImpl
+//-------------------------------------------
+
+/**
+ * Construct a new log channel for the given display object
+ * @param owner A non-owning pointer to the owning display
+ */
+MessageDisplay::LogChannelImpl::LogChannelImpl(MessageDisplay *owner)
+    : m_display(owner) {}
+
+/**
+ * Callback when a log message is recieved from the channel
+ * @param msg The message and priority given by the caller
+ */
+void MessageDisplay::LogChannelImpl::log(const Poco::Message &msg) {
+  if (m_display->source().isEmpty() ||
+      m_display->source() == msg.getSource().c_str()) {
+    m_display->append(Message(QString::fromStdString(msg.getText() + "\n"),
+                              msg.getPriority()));
+  }
+}
+
+//-------------------------------------------
+// MessageDisplay
 //-------------------------------------------
 
 /**
@@ -76,7 +99,8 @@ void MessageDisplay::writeSettings(QSettings &storage) const {
  * @param parent An optional parent widget
  */
 MessageDisplay::MessageDisplay(QWidget *parent)
-    : QWidget(parent), m_logChannel(new QtSignalChannel),
+    : QWidget(parent), MantidWidgets::Configurable(),
+      m_channel(new LogChannelImpl(this)),
       m_textDisplay(new QPlainTextEdit(this)), m_formats(),
       m_loglevels(new QActionGroup(this)),
       m_logLevelMapping(new QSignalMapper(this)),
@@ -95,7 +119,7 @@ MessageDisplay::MessageDisplay(QWidget *parent)
 MessageDisplay::~MessageDisplay() {
   // The Channel class is ref counted and will
   // delete itself when required
-  m_logChannel->release();
+  m_channel->release();
   delete m_textDisplay;
 }
 
@@ -112,12 +136,12 @@ void MessageDisplay::attachLoggingChannel(int logLevel) {
   auto *rootChannel = Poco::Logger::root().getChannel();
   // The root channel might be a SplitterChannel
   if (auto *splitChannel = dynamic_cast<Poco::SplitterChannel *>(rootChannel)) {
-    splitChannel->addChannel(m_logChannel);
+    splitChannel->addChannel(m_channel);
   } else {
-    Poco::Logger::setChannel(rootLogger.name(), m_logChannel);
+    Poco::Logger::setChannel(rootLogger.name(), m_channel);
   }
-  connect(m_logChannel, SIGNAL(messageReceived(const Message &)), this,
-          SLOT(append(const Message &)));
+  //  connect(m_logChannel, SIGNAL(messageReceived(const Message &)), this,
+  //          SLOT(append(const Message &)));
   if (logLevel > 0) {
     configSvc.setLogLevel(logLevel, true);
   }
@@ -128,9 +152,7 @@ void MessageDisplay::attachLoggingChannel(int logLevel) {
  * @param source A string specifying the required source for messages
  * that will be emitted
  */
-void MessageDisplay::setSource(const QString &source) {
-  m_logChannel->setSource(source);
-}
+void MessageDisplay::setSource(const QString &source) { m_source = source; }
 
 //----------------------------------------------------------------------------------------
 // Public slots
