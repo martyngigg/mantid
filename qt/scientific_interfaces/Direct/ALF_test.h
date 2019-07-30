@@ -17,7 +17,7 @@ namespace CustomInterfaces {
 
 /** ALCInterface : Custom interface for Avoided Level Crossing analysis
  */
-class MANTIDQT_MUONINTERFACE_DLL ALFTest : public API::UserSubWindow {
+class MANTIDQT_DIRECT_DLL ALFTest : public API::UserSubWindow {
   Q_OBJECT
 
 public:
