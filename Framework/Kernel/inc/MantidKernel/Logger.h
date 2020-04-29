@@ -10,13 +10,12 @@
 // Includes
 //----------------------------------------------------------------------
 #include "MantidKernel/DllConfig.h"
-#include "MantidKernel/ThreadSafeLogStream.h"
 
 #include <Poco/Message.h>
 
 #include <iosfwd>
-
 #include <memory>
+#include <ostream>
 #include <string>
 
 //----------------------------------------------------------------------
@@ -30,6 +29,8 @@ class Logger;
 
 namespace Mantid {
 namespace Kernel {
+// Forward declare heavy header
+class ThreadSafeLogStream;
 
 /** @class Logger Logger.h Kernel/Logger.h
 
@@ -58,6 +59,8 @@ public:
 
   /// Constructor giving the logger name
   Logger(const std::string &name);
+  /// Destructor
+  ~Logger();
   /// Update the name of the logger
   void setName(const std::string &name);
 

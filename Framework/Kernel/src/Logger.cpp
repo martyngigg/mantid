@@ -5,6 +5,7 @@
 //   Institut Laue - Langevin & CSNS, Institute of High Energy Physics, CAS
 // SPDX - License - Identifier: GPL - 3.0 +
 #include "MantidKernel/Logger.h"
+#include "MantidKernel/ThreadSafeLogStream.h"
 
 #include <Poco/Logger.h>
 #include <Poco/NullStream.h>
@@ -34,6 +35,12 @@ Logger::Logger(const std::string &name)
     : m_log(&Poco::Logger::get(name)),
       m_logStream(std::make_unique<ThreadSafeLogStream>(*m_log)),
       m_levelOffset(0), m_enabled(true) {}
+
+/**
+ * Destructor defined here as ThreadSafeLogStream is forward declared
+ * as it is a heavy header to include.
+ */
+Logger::~Logger() = default;
 
 /**
  * @param name The new name
