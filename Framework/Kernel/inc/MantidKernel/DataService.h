@@ -9,21 +9,18 @@
 //----------------------------------------------------------------------
 // Includes
 //----------------------------------------------------------------------
-#ifndef Q_MOC_RUN
-#include <boost/algorithm/string.hpp>
-#include <memory>
-#endif
 #include "MantidKernel/ConfigService.h"
 #include "MantidKernel/Exception.h"
 #include "MantidKernel/Logger.h"
 #include <Poco/Notification.h>
 #include <Poco/NotificationCenter.h>
+#include <memory>
 #include <mutex>
 
 #ifdef _WIN32
 #define strcasecmp _stricmp
 #else
-#include "Strings.h"
+#include "strings.h"
 #endif
 
 namespace Mantid {
@@ -487,10 +484,8 @@ public:
     return objects;
   }
 
-  inline static std::string prefixToHide() { return "__"; }
-
   inline static bool isHiddenDataServiceObject(const std::string &name) {
-    return boost::starts_with(name, prefixToHide());
+    return name.compare(0, 2, "__") == 0;
   }
 
   static bool showingHiddenObjects() {

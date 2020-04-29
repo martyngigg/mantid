@@ -493,10 +493,6 @@ public:
     TS_ASSERT_EQUALS(*svc.retrieve("item2345"), 2345);
   }
 
-  void test_prefixToHide() {
-    TS_ASSERT_EQUALS(FakeDataService::prefixToHide(), "__");
-  }
-
   void test_isHiddenDataServiceObject() {
     TS_ASSERT(FakeDataService::isHiddenDataServiceObject("__hidden"));
     TS_ASSERT(FakeDataService::isHiddenDataServiceObject("__HIDDEN"));

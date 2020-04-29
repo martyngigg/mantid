@@ -26,6 +26,8 @@
 #include "MantidKernel/WriteLock.h"
 #include "MantidTestHelpers/FakeObjects.h"
 #include "PropertyManagerHelper.h"
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/split.hpp>
 #include <map>
 #include <utility>
 
