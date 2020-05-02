@@ -480,9 +480,6 @@ if(UNITY_BUILD)
   enable_unity_build(Kernel SRC_FILES SRC_UNITY_IGNORE_FILES 10)
 endif(UNITY_BUILD)
 
-# Enable precompiled headers where supported (must be done before target is
-# added)
-enable_precompiled_headers(inc/MantidKernel/PrecompiledHeader.h SRC_FILES)
 # Add the target for this directory
 add_library(Kernel ${SRC_FILES} ${INC_FILES})
 # Set the name of the generated library
@@ -532,6 +529,41 @@ if(WIN32)
   target_link_libraries(Kernel LINK_PRIVATE Psapi.lib) # For memory usage
                                                        # queries
 endif()
+
+target_precompile_headers(Kernel
+  PUBLIC
+    [["MantidKernel/System.h"]]
+    [["MantidKernel/IValidator.h"]]
+    [["MantidKernel/Matrix.h"]]
+    [["MantidKernel/Property.h"]]
+    [["MantidKernel/PropertyManager.h"]]
+    [["MantidKernel/V3D.h"]]
+  PRIVATE
+    <atomic>
+    <climits>
+    <cstddef>
+    <cstdint>
+    <cstdio>
+    <iomanip>
+    <map>
+    <memory>
+    <istream>
+    <ostream>
+    <set>
+    <stdexcept>
+    <string>
+    <unordered_map>
+    <vector>
+    <boost/algorithm/string.hpp>
+    <boost/date_time/posix_time/posix_time.hpp>
+    <boost/optional.hpp>
+    <Poco/Logger.h>
+    <Poco/File.h>
+    <Poco/Path.h>
+    <NeXus/NeXusFile.hpp>
+    <NeXus/NeXusException.hpp>
+    <tbb/concurrent_unordered_map.h>
+)
 
 # Add the unit tests directory
 add_subdirectory(test)
