@@ -20,6 +20,14 @@ using namespace Mantid::API;
 using namespace Mantid::Kernel;
 
 class WorkspaceHistoryTest : public CxxTest::TestSuite {
+public:
+  // This pair of boilerplate methods prevent the suite being created statically
+  // This means the constructor (& destructor) isn't called when running other
+  // tests
+  static WorkspaceHistoryTest *createSuite() {
+    return new WorkspaceHistoryTest();
+  }
+  static void destroySuite(WorkspaceHistoryTest *suite) { delete suite; }
 private:
   /// Use a fake algorithm object instead of a dependency on a real one.
   class SimpleSum : public Algorithm {
@@ -139,6 +147,14 @@ public:
 
 class WorkspaceHistoryTestPerformance : public CxxTest::TestSuite {
 public:
+  // This pair of boilerplate methods prevent the suite being created statically
+  // This means the constructor (& destructor) isn't called when running other
+  // tests
+  static WorkspaceHistoryTestPerformance *createSuite() {
+    return new WorkspaceHistoryTestPerformance();
+  }
+  static void destroySuite(WorkspaceHistoryTestPerformance *suite) { delete suite; }
+
   WorkspaceHistoryTestPerformance() {
     constructAlgHistories1();
     constructAlgHistories2();

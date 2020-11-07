@@ -50,7 +50,10 @@
 
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/path.hpp>
 #include <boost/optional/optional.hpp>
+#include <boost/range/join.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -1449,7 +1452,7 @@ const std::vector<std::string> &ConfigServiceImpl::getDataSearchDirs() const {
  */
 void ConfigServiceImpl::setDataSearchDirs(
     const std::vector<std::string> &searchDirs) {
-  std::string searchPaths = boost::join(searchDirs, ";");
+  std::string searchPaths = boost::algorithm::join(searchDirs, ";");
   setDataSearchDirs(searchPaths);
 }
 
@@ -1933,52 +1936,41 @@ Kernel::ProxyInfo &ConfigServiceImpl::getProxy(const std::string &url) {
 std::string ConfigServiceImpl::getFullPath(const std::string &filename,
                                            const bool ignoreDirs,
                                            const int options) const {
-  std::string fName = Kernel::Strings::strip(filename);
-  g_log.debug() << "getFullPath(" << fName << ")\n";
-  // If this is already a full path, nothing to do
-  if (Poco::Path(fName).isAbsolute())
-    return fName;
-  // First try the path relative to the current directory. Can throw in some
-  // circumstances with extensions that have wild cards
-  try {
-    Poco::File fullPath(Poco::Path().resolve(fName));
-    if (fullPath.exists() && (!ignoreDirs || !fullPath.isDirectory()))
-      return fullPath.path();
-  } catch (std::exception &) {
+  namespace bfs = boost::filesystem;
+  if (g_log.is(Logger::Priority::PRIO_DEBUG))
+    g_log.debug() << "getFullPath(" << filename << ")\n";
+
+  const bfs::path inputPath{filename};
+  if (inputPath.is_absolute())
+    return filename;
+  // exists in current working directory?
+  if (bfs::exists(inputPath)) {
+    return bfs::absolute(inputPath).generic_string();
   }
 
-  auto directoryNames = getDataSearchDirs();
-  const auto &instrDirectories = getInstrumentDirectories();
-  directoryNames.insert(directoryNames.end(), instrDirectories.begin(),
-                        instrDirectories.end());
-  for (const auto &searchPath : directoryNames) {
-    g_log.debug() << "Searching for " << fName << " in " << searchPath << "\n";
-// On windows globbing is not working properly with network drives
-// for example a network drive containing a $
-// For this reason, and since windows is case insensitive anyway
-// a special case is made for windows
-#ifdef _WIN32
-    if (fName.find("*") != std::string::npos) {
-#endif
-      Poco::Path path(searchPath, fName);
-      std::set<std::string> files;
-      Kernel::Glob::glob(path, files, options);
-      if (!files.empty()) {
-        Poco::File matchPath(*files.begin());
-        if (ignoreDirs && matchPath.isDirectory()) {
-          continue;
-        }
-        return *files.begin();
-      }
-#ifdef _WIN32
-    } else {
-      Poco::Path path(searchPath, fName);
-      Poco::File file(path);
-      if (file.exists() && !(ignoreDirs && file.isDirectory())) {
-        return path.toString();
-      }
+  // Acceptance function based on input options
+  std::function<bool(const bfs::path &filePath)> isPathAccepted;
+  if (ignoreDirs) {
+    isPathAccepted = [](const bfs::path &filePath) -> bool {
+      return bfs::exists(filePath) && !bfs::is_directory(filePath);
+    };
+  } else {
+    isPathAccepted = [](const bfs::path &filePath) -> bool {
+      return bfs::exists(filePath);
+    };
+  }
+
+  for (const auto &searchPath :
+       boost::range::join(getDataSearchDirs(), getInstrumentDirectories())) {
+    if (g_log.is(Logger::Priority::PRIO_DEBUG))
+      g_log.debug() << "  Searching for " << filename << " in " << searchPath
+                    << "\n";
+    const auto fullPath = bfs::absolute(inputPath, searchPath);
+    if (isPathAccepted(fullPath)) {
+      if (g_log.is(Logger::Priority::PRIO_DEBUG))
+        g_log.debug() << "  Found path " << fullPath.generic_string() << "\n";
+      return fullPath.generic_string();
     }
-#endif
   }
   return "";
 }
