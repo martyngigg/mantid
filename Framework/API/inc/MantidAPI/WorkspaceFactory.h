@@ -21,6 +21,7 @@
 #include "MantidAPI/MatrixWorkspace_fwd.h"
 #include "MantidAPI/Workspace_fwd.h"
 #include "MantidKernel/DynamicFactory.h"
+#include "MantidKernel/SharedPtrTracker.h"
 #include "MantidKernel/SingletonHolder.h"
 
 #include <memory>
@@ -41,7 +42,8 @@ class Workspace;
     @date 26/09/2007
 */
 
-class MANTID_API_DLL WorkspaceFactoryImpl : public Kernel::DynamicFactory<Workspace> {
+class MANTID_API_DLL WorkspaceFactoryImpl : public Kernel::DynamicFactory<Workspace>,
+                                            public Kernel::SharedPtrTracker<Workspace> {
 public:
   WorkspaceFactoryImpl(const WorkspaceFactoryImpl &) = delete;
   WorkspaceFactoryImpl &operator=(const WorkspaceFactoryImpl &) = delete;

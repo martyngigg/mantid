@@ -48,6 +48,8 @@ public:
   virtual const std::string id() const = 0;
   /// The name of the object
   virtual const std::string &getName() const = 0;
+  /// The name of the object
+  const std::string &name() const { return getName(); }
   /// Can this object be accessed from multiple threads safely
   virtual bool threadSafe() const = 0;
   /// Serializes the object to a string

@@ -11,18 +11,77 @@
 #include "MantidAPI/MatrixWorkspace.h"
 #include "MantidAPI/NumericAxis.h"
 #include "MantidAPI/Run.h"
-#include "MantidAPI/TextAxis.h"
 #include "MantidAPI/Workspace.h"
 #include "MantidAPI/WorkspaceOpOverloads.h"
-#include "MantidKernel/ConfigService.h"
+
+#define _GNU_SOURCE
+#include <boost/stacktrace.hpp>
+#include <tuple>
+#include <vector>
+
+using boost::stacktrace::stacktrace;
+using std::size_t;
 
 namespace Mantid::API {
 namespace {
 /// static logger object
 Kernel::Logger g_log("WorkspaceFactory");
-} // namespace
 
-using std::size_t;
+/**
+ * A debug tool for tracking life times of workspace shared_ptrs
+ */
+class WorkspaceLifetimeTracker {
+public:
+  using Workspace_wptr = std::weak_ptr<Workspace>;
+
+  /**
+   * Add a weak reference to the given Workspace along with the
+   * stacktrace associated with its creation
+   * @param object Shared reference to a Workspace
+   * @param trace Stacktrace of creation
+   */
+  auto track(const Workspace_sptr &object, stacktrace trace) -> void {
+    m_objects.emplace_back(Workspace_wptr(object), std::move(trace));
+  }
+
+  /**
+   * Create a string representation of live references
+   * @param os Stream to write to
+   * @return Live ref info
+   */
+  auto dumpReferencesInfo(std::ostream &os) const -> void {
+    std::string info;
+    info.append("Workspace Lifetime Information\n").append("------------------------------\n\n");
+
+    info.append("Total references tracked:  ").append(std::to_string(m_objects.size())).append("\n");
+    info.append("Expired references:  ").append(std::to_string(expiredCount())).append("\n\n");
+
+    os << info;
+  }
+
+  auto expiredCount() const -> size_t {
+    return std::count_if(m_objects.begin(), m_objects.end(),
+                         [](const auto &element) { return element.workspace.expired(); });
+  }
+
+private:
+  struct WeakWorkspaceReference {
+    WeakWorkspaceReference(Workspace_wptr ws, stacktrace st) noexcept
+        : workspace(std::move(ws)), stackTraceAtCreation(std::move(st)) {}
+
+    Workspace_wptr workspace;
+    stacktrace stackTraceAtCreation;
+  };
+  using ObjectCreationInfo = std::vector<WeakWorkspaceReference>;
+  ObjectCreationInfo m_objects;
+};
+
+auto lifetimeTracker() -> WorkspaceLifetimeTracker & {
+  static WorkspaceLifetimeTracker lifetimeTracker;
+  return lifetimeTracker;
+}
+
+} // namespace
 
 /// Private constructor for singleton class
 WorkspaceFactoryImpl::WorkspaceFactoryImpl() : Mantid::Kernel::DynamicFactory<Workspace>() {
@@ -170,6 +229,7 @@ MatrixWorkspace_sptr WorkspaceFactoryImpl::create(const std::string &className, 
   }
 
   ws->initialize(NVectors, XLength, YLength);
+  const_cast<WorkspaceFactoryImpl *>(this)->track(ws, boost::stacktrace::stacktrace());
   return ws;
 }
 

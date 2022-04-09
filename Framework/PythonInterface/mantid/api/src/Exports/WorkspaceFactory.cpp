@@ -93,6 +93,8 @@ void export_WorkspaceFactory() {
                "Creates an empty PeaksWorkspace",
                (arg("self"), arg("className") = "PeaksWorkspace"))[return_value_policy<AsType<Workspace_sptr>>()])
 
+      .def("dumpReferencesInfo", &WorkspaceFactoryImpl::dumpReferencesInfo)
+
       .def("Instance", &WorkspaceFactory::Instance, return_value_policy<reference_existing_object>(),
            "Returns the single instance of this class.")
       .staticmethod("Instance");

@@ -22,6 +22,7 @@
 // std
 #include <functional>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <vector>
 
@@ -38,8 +39,7 @@ using CaseSensitiveStringComparator = std::less<std::string>;
 /** @class DynamicFactory DynamicFactory.h Kernel/DynamicFactory.h
 
     The dynamic factory is a base dynamic factory for serving up objects in
-   response
-    to requests from other classes.
+    response to requests from other classes.
 
     @author Nick Draper, Tessella Support Services plc
     @date 10/10/2007
@@ -47,16 +47,21 @@ using CaseSensitiveStringComparator = std::less<std::string>;
 template <class Base, class Comparator = CaseInsensitiveStringComparator> class DynamicFactory {
 
 public:
+  /// A typedef for the instantiator
+  using AbstractFactory = AbstractInstantiator<Base>;
   /// Defines the whether notifications are dispatched
   enum NotificationStatus { Enabled, Disabled };
   /// Defines replacement behaviour
   enum SubscribeAction { ErrorIfExists, OverwriteCurrent };
+
+  /// Destroys the DynamicFactory and deletes the instantiators for
+  /// all registered classes.
+  virtual ~DynamicFactory() = default;
+  // Not-copyable
   DynamicFactory(const DynamicFactory &) = delete;
   DynamicFactory &operator=(const DynamicFactory &) = delete;
 
-  /**
-   * Base class for dynamic factory notifications
-   */
+  /// Base class for dynamic factory notifications
   class DynamicFactoryNotification : public Poco::Notification {};
   /**
    * A notification that the factory has been updated. This is
@@ -64,21 +69,10 @@ public:
    */
   class UpdateNotification : public DynamicFactoryNotification {};
 
-  /**
-   * Enable notifications
-   */
+  /// Enable notifications
   void enableNotifications() { m_notifyStatus = Enabled; }
-
-  /**
-   * Disable notifications
-   */
+  /// Disable notifications
   void disableNotifications() { m_notifyStatus = Disabled; }
-
-  /// A typedef for the instantiator
-  using AbstractFactory = AbstractInstantiator<Base>;
-  /// Destroys the DynamicFactory and deletes the instantiators for
-  /// all registered classes.
-  virtual ~DynamicFactory() = default;
 
   /// Creates a new instance of the class with the given name.
   /// The class must have been registered with subscribe() (typically done via a
@@ -87,10 +81,9 @@ public:
   /// @param className :: the name of the class you wish to create
   /// @return a shared pointer ot the base class
   virtual std::shared_ptr<Base> create(const std::string &className) const {
-    auto it = _map.find(className);
-    if (it != _map.end())
+    if (auto it = m_map.find(className); it != m_map.end()) {
       return it->second->createInstance();
-    else
+    } else
       throw Exception::NotFoundError("DynamicFactory: " + className + " is not registered.\n", className);
   }
 
@@ -104,8 +97,8 @@ public:
   /// @param className :: the name of the class you wish to create
   /// @return a pointer to the base class
   virtual Base *createUnwrapped(const std::string &className) const {
-    auto it = _map.find(className);
-    if (it != _map.end())
+    auto it = m_map.find(className);
+    if (it != m_map.end())
       return it->second->createUnwrappedInstance();
     else
       throw Exception::NotFoundError("DynamicFactory: " + className + " is not registered.\n", className);
@@ -138,9 +131,9 @@ public:
       throw std::invalid_argument("Cannot register empty class name");
     }
 
-    auto it = _map.find(className);
-    if (it == _map.end() || replace == OverwriteCurrent) {
-      _map[className] = std::move(pAbstractFactory);
+    auto it = m_map.find(className);
+    if (it == m_map.end() || replace == OverwriteCurrent) {
+      m_map[className] = std::move(pAbstractFactory);
       sendUpdateNotificationIfEnabled();
     } else {
       throw std::runtime_error(className + " is already registered.\n");
@@ -152,9 +145,9 @@ public:
   /// Throws a NotFoundException if the class has not been registered.
   /// @param className :: the name of the class you wish to unsubscribe
   void unsubscribe(const std::string &className) {
-    auto it = _map.find(className);
-    if (!className.empty() && it != _map.end()) {
-      _map.erase(it);
+    auto it = m_map.find(className);
+    if (!className.empty() && it != m_map.end()) {
+      m_map.erase(it);
       sendUpdateNotificationIfEnabled();
     } else {
       throw Exception::NotFoundError("DynamicFactory:" + className + " is not registered.\n", className);
@@ -164,16 +157,15 @@ public:
   /// Returns true if the given class is currently registered.
   /// @param className :: the name of the class you wish to check
   /// @returns true is the class is subscribed
-  bool exists(const std::string &className) const { return _map.find(className) != _map.end(); }
+  bool exists(const std::string &className) const { return m_map.find(className) != m_map.end(); }
 
   /// Returns the keys in the map
   /// @return A string vector of keys
   virtual const std::vector<std::string> getKeys() const {
     std::vector<std::string> names;
-    names.reserve(_map.size());
-    std::transform(
-        _map.cbegin(), _map.cend(), std::back_inserter(names),
-        [](const std::pair<const std::string, std::unique_ptr<AbstractFactory>> &mapPair) { return mapPair.first; });
+    names.reserve(m_map.size());
+    std::transform(m_map.cbegin(), m_map.cend(), std::back_inserter(names),
+                   [](const auto &mapPair) { return mapPair.first; });
     return names;
   }
 
@@ -185,7 +177,7 @@ public:
 
 protected:
   /// Protected constructor for base class
-  DynamicFactory() : notificationCenter(), _map(), m_notifyStatus(Disabled) {}
+  DynamicFactory() = default;
 
 private:
   /// Send an update notification if they are enabled
@@ -194,12 +186,12 @@ private:
       sendUpdateNotification();
   }
   /// Send an update notification
-  void sendUpdateNotification() { notificationCenter.postNotification(new UpdateNotification); }
+  inline void sendUpdateNotification() { notificationCenter.postNotification(new UpdateNotification); }
 
   /// A typedef for the map of registered classes
   using FactoryMap = std::map<std::string, std::unique_ptr<AbstractFactory>, Comparator>;
   /// The map holding the registered class names and their instantiators
-  FactoryMap _map;
+  FactoryMap m_map;
   /// Flag marking whether we should dispatch notifications
   NotificationStatus m_notifyStatus;
 };

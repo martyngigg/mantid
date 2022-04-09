@@ -266,6 +266,7 @@ set(INC_FILES
     inc/MantidKernel/RebinParamsValidator.h
     inc/MantidKernel/RegexStrings.h
     inc/MantidKernel/RegistrationHelper.h
+    inc/MantidKernel/SharedPtrTracker.h
     inc/MantidKernel/SingletonHolder.h
     inc/MantidKernel/SobolSequence.h
     inc/MantidKernel/SpecialCoordinateSystem.h
