@@ -49,6 +49,7 @@ set(EXPORT_FILES
     src/Exports/PropertyManager.cpp
     src/Exports/PropertyManagerDataService.cpp
     src/Exports/PropertyManagerProperty.cpp
+    src/Exports/PythonObjectProperty.cpp
     src/Exports/PropertyHistory.cpp
     src/Exports/Memory.cpp
     src/Exports/ProgressBase.cpp
